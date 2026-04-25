@@ -1,4 +1,4 @@
-from pawpal_system import Owner, Pet, Preferences, Status, Task, Priority, Species, PetCareService
+from pawpal_system import Owner, Pet, Preferences, Status, Task, Priority, Species, PetCareService, PrestonAdvisor
 
 def main():
     # Create an owner
@@ -26,4 +26,17 @@ def main():
     print("\nGenerated Schedule:")
     for task in schedule.tasks:
         print(f"  - {task.title} for {task.pet.name} with a {task.priority.value} priority. This task will take {task.duration_minutes} minutes. The status of this task is {task.status.value}")
+
+    # PawPal Preston demo
+    print("\n--- PawPal Preston ---")
+    advisor = PrestonAdvisor()
+
+    q1 = "Buddy has been scratching his ears a lot. What could be causing this?"
+    print(f"\nQ: {q1}")
+    print(f"A: {advisor.ask(q1, pet1)}")
+
+    q2 = "What is a healthy daily diet for an adult cat like Mittens?"
+    print(f"\nQ: {q2}")
+    print(f"A: {advisor.ask(q2, pet2)}")
+
 main()
