@@ -1,6 +1,6 @@
 import streamlit as st
 from pawpal_system import (
-    Owner, Pet, Task, PetCareService,
+    Owner, Pet, Task, PetCareService, PrestonAdvisor,
     Species, Priority, Status, Preferences,
 )
 
@@ -135,3 +135,25 @@ if st.button("Generate schedule"):
             )
     else:
         st.info("All tasks are completed — nothing left to schedule!")
+
+st.divider()
+
+# ── PawPal Preston ────────────────────────────────────────────────────────────
+st.header("🐾 Ask PawPal Preston")
+st.caption("Your AI pet health advisor — dogs & cats only, backed by trusted veterinary sources.")
+
+if "preston_response" not in st.session_state:
+    st.session_state.preston_response = ""
+
+question = st.text_area(
+    "Ask Preston a question about your pet's health, behavior, or diet:",
+    height=80,
+    placeholder="e.g. My dog keeps scratching his ears — what could be causing this?",
+)
+
+if st.button("Ask Preston"):
+    advisor = PrestonAdvisor()
+    st.session_state.preston_response = advisor.ask(question, pet)
+
+if st.session_state.preston_response:
+    st.info(st.session_state.preston_response)

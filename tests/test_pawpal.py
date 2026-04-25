@@ -2,8 +2,8 @@
 
 import pytest
 from pawpal_system import (
-    Owner, Pet, Task, PetCareService, Schedule,
-    Species, Priority, Status, Preferences,
+    Pet, Task, PetCareService, 
+    Species, Priority, Status, PrestonAdvisor,
 )
 
 
@@ -119,3 +119,38 @@ def test_get_tasks_for_pet_is_pet_specific(service, dog, cat):
 
     assert dog_task in service.get_tasks_for_pet(dog)
     assert cat_task not in service.get_tasks_for_pet(dog)
+
+
+# ---------------------------------------------------------------------------
+# PrestonAdvisor tests
+# ---------------------------------------------------------------------------
+
+def test_preston_rejects_empty_question(dog, monkeypatch):
+    """Input guardrail: empty question must return a prompt-to-fill message."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    advisor = PrestonAdvisor()
+    response = advisor.ask("", dog)
+    assert "enter a question" in response.lower()
+
+
+def test_preston_rejects_other_species(monkeypatch):
+    """Input guardrail: Species.OTHER must return a specialist-referral message."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    exotic = Pet("Tweety", 2, "Canary", Species.OTHER)
+    advisor = PrestonAdvisor()
+    response = advisor.ask("Is my bird eating enough?", exotic)
+    assert "specializes in dogs and cats" in response
+
+
+def test_preston_returns_ai_response_for_valid_question(dog, monkeypatch):
+    """Valid dog question must return the Gemini response (mocked to avoid real API call)."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    advisor = PrestonAdvisor()
+    monkeypatch.setattr(
+        advisor._client,
+        "complete",
+        lambda s, u: "Per VCA Animal Hospitals, dogs need balanced nutrition.",
+    )
+    response = advisor.ask("What should I feed my dog?", dog)
+    assert len(response) > 20
+    assert "VCA" in response
