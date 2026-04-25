@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**PawPal+** is an AI110 Module 2 assignment — a Streamlit app for daily pet care task scheduling. The backend logic lives in `pawpal_system.py`; the UI skeleton is in `app.py`.
+**PawPal+** is an AI110 capstone project — a Streamlit app for daily pet care task scheduling, extended with an AI health advisor feature ("PawPal Preston") powered by the Gemini API.
 
 ## Commands
 
@@ -13,50 +13,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+cp .env.example .env             # then fill in GEMINI_API_KEY
 
-# Run app
+# Run Streamlit UI
 streamlit run app.py
+
+# Run CLI demo (no UI, exercises the full backend)
+python main.py
 
 # Run tests
 pytest -v
 
 # Run a single test file
-pytest tests/test_scheduler.py -v
+pytest tests/test_pawpal.py -v
 ```
 
 ## Architecture
 
-The system design is defined in `PawpalClassDiagram.mmd` (Mermaid syntax). Key classes:
+Core backend lives entirely in `pawpal_system.py`. Key classes:
 
-- **`Preferences`** — owner settings (e.g., reminderTime)
-- **`Owner`** — name, preferences, list of pets
-- **`Pet`** — name, age, breed, species (enum: Cat/Dog/Other)
-- **`Task`** — title, durationMinutes, time, priority (High/Medium/Low), status (Pending/Completed/Skipped), assigned pet
-- **`Schedule`** — list of tasks + a description string explaining the plan
-- **`PetCareService`** — singleton service; manages tasks and generates schedules via `generateSchedule()`; uses private `isConflict()` internally
+- **`Preferences`** — `reminder_time: str` for daily notifications
+- **`Pet`** — `name`, `age`, `breed`, `species` (`Species` enum: `CAT/DOG/OTHER`)
+- **`Owner`** — `name`, `preferences`, `pets: list[Pet]`; `add_pet()` appends
+- **`Task`** — `title`, `duration_minutes`, `priority` (`Priority` enum), `status` (`Status` enum, default `PENDING`), `pet`, optional `time: datetime`
+- **`Schedule`** — `tasks: list[Task]`, `description: str`
+- **`PetCareService`** — singleton; `add_task`, `remove_task`, `update_task`, `get_tasks_for_pet`, `filter_tasks_by_status`, `filter_tasks_by_priority`, `generate_schedule`
 
-**Data flow**: `Owner` owns 1+ `Pet`s → `Task`s are assigned to a `Pet` → `PetCareService` takes tasks and produces a `Schedule`.
+**`generate_schedule()`** sorts all tasks by priority (`HIGH→MEDIUM→LOW`) and excludes `Status.COMPLETED` tasks. It does **not** assign times or check for time conflicts — that's a known limitation documented in `reflection.md`.
 
-All backend logic belongs in `pawpal_system.py`. Once implemented, `app.py` imports from it and calls `PetCareService` to build and display the schedule.
+**`update_task()`** matches by object identity first, then falls back to matching by `title`.
 
-## Integration Pattern
+**`GeminiClient`** (`geminiClient.py`) is a thin wrapper around `google-genai`. It reads `GEMINI_API_KEY` from the environment (via `.env`), merges system + user prompts into one string, and returns `""` on any error so callers can fall back to heuristic logic.
 
-```python
-# app.py — expected wiring once backend exists
-from pawpal_system import Owner, Pet, Task, PetCareService, Species, Priority
+## Capstone Extension
 
-service = PetCareService.get_instance()
-owner = Owner(name=owner_name, preferences=..., pets=[pet])
-task = Task(title="Morning walk", duration_minutes=20, priority=Priority.HIGH, pet=pet)
-service.add_task(task)
-schedule = service.generate_schedule()
-st.write(schedule.description)
-```
+`SPRINT.md` tracks the sprint (due 2026-04-27). The two outstanding deliverables are:
 
-## Design Notes
+1. **AI feature** — implement "PawPal Preston" (pet health advisor) in `pawpal_system.py` using `GeminiClient`, wire into `app.py` and `main.py`
+2. **Reliability / guardrail** — input validation, output guardrails, or a self-critique loop; add at least one test demonstrating it catching a bad case
 
-- `PetCareService` is a **singleton** — only one instance manages all state.
-- `isConflict(task1, task2)` is private; it checks for overlapping times and is called internally by `generateSchedule`.
-- Scheduling algorithm baseline: sort tasks by priority, fit within available time, skip what doesn't fit.
-- Hard constraints (time conflicts) vs. soft constraints (preferences) should be documented in `reflection.md`.
-- Tests go in `test_*.py` files at the project root or in a `tests/` directory.
+Architecture diagram at `pawpalDiagrams/PawpalClassDiagram.mmd` needs updating once the AI components are added.
+
+## Testing
+
+Tests live in `tests/test_pawpal.py`. The `autouse` fixture resets the singleton (`PetCareService._instance = None`) before and after every test — always do this when adding new tests to avoid state bleed between test cases.
