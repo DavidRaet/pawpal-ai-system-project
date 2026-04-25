@@ -65,6 +65,18 @@ classDiagram
         +filterTasksByPriority(priority: Priority) List
     }
 
+    class GeminiClient {
+        -String modelName
+        -float temperature
+        +complete(systemPrompt: str, userPrompt: str) str
+    }
+
+    class PrestonAdvisor {
+        -GeminiClient client
+        +MAX_QUESTION_LENGTH: int
+        +ask(question: str, pet: Pet) str
+    }
+
     Owner "1" --> "1" Preferences : has
     Owner "1" --> "1..*" Pet : owns
     Pet --> Species : is
@@ -74,5 +86,7 @@ classDiagram
     Schedule "1" --> "0..*" Task : contains
     PetCareService ..> Schedule : generates
     PetCareService ..> Task : manages
+    PrestonAdvisor --> Pet : uses
+    PrestonAdvisor --> GeminiClient : delegates to
 
     

@@ -1,0 +1,43 @@
+flowchart LR
+    User(["User"])
+    Interface["Interface Layer\nStreamlit UI · app.py\nCLI Demo · main.py"]
+
+    subgraph TaskPath["Task Management"]
+        direction LR
+        Pet["Pet\nname · age · breed · species"]
+        Task["Task\ntitle · duration · priority · status"]
+        PCS["PetCareService\n(Singleton)\nadd / remove / update / filter"]
+        Schedule(["Schedule\nHIGH → MEDIUM → LOW\nexcludes COMPLETED"])
+    end
+
+    subgraph AIPath["PawPal Preston — AI Health Advisor"]
+        direction LR
+        InputGuard{"Input Guard\n≤ 500 chars\nCAT or DOG only"}
+        Preston["PrestonAdvisor\nbuild system + user prompt"]
+        GeminiClient["GeminiClient\ngemma-3-27b-it · temp 0.2"]
+        GeminiAPI[("Gemini API\ngoogle-genai")]
+        OutputGuard{"Output Guard\nresponse ≥ 20 chars?"}
+        Disclaimer(["Disclaimer appended\nverified resource links"])
+    end
+
+    ErrMsg(["Error returned\nto user"])
+    Fallback(["Fallback message\n'Unable to get advice'"])
+
+    %% Entry
+    User --> Interface
+
+    %% Task management path
+    Interface -->|"create Owner · Pet · Task"| Pet
+    Pet --> Task
+    Task -->|"add_task()"| PCS
+    PCS -->|"generate_schedule()"| Schedule
+
+    %% AI advisor path
+    Interface -->|"question + pet"| InputGuard
+    InputGuard -->|"invalid"| ErrMsg
+    InputGuard -->|"valid"| Preston
+    Preston -->|"system + user prompt"| GeminiClient
+    GeminiClient -->|"merged prompt"| GeminiAPI
+    GeminiAPI -->|"response.text"| OutputGuard
+    OutputGuard -->|"< 20 chars"| Fallback
+    OutputGuard -->|"≥ 20 chars"| Disclaimer
